@@ -1,0 +1,60 @@
+name: Publish NEO Before After
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site-*.zip'
+      - 'archives.json'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and unpack the reviewed site
+        shell: python
+        run: |
+          import hashlib, json, pathlib, zipfile
+          root = pathlib.Path("_site")
+          root.mkdir()
+          seen = set()
+          for item in json.loads(pathlib.Path("archives.json").read_text()):
+              archive = pathlib.Path(item["file"])
+              assert archive.name == str(archive) and archive.name.startswith("site-")
+              assert hashlib.sha256(archive.read_bytes()).hexdigest() == item["sha256"]
+              with zipfile.ZipFile(archive) as bundle:
+                  for info in bundle.infolist():
+                      path = pathlib.PurePosixPath(info.filename)
+                      assert not path.is_absolute() and ".." not in path.parts
+                      assert not any(part.startswith("._") for part in path.parts)
+                      assert str(path) not in seen
+                      seen.add(str(path))
+                  bundle.extractall(root)
+          manifest = json.loads((root / "release.json").read_text())
+          for item in manifest["files"]:
+              file = root / item["path"]
+              assert file.is_file() and file.stat().st_size == item["size"], item["path"]
+              assert hashlib.sha256(file.read_bytes()).hexdigest() == item["sha256"], item["path"]
+          assert (root / "index.html").is_file()
+          print("Verified", len(manifest["files"]), "files for", manifest["release"])
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
