@@ -6,6 +6,7 @@ on:
     paths:
       - 'site-*.zip'
       - 'archives.json'
+      - 'update.json'
       - '.github/workflows/publish.yml'
   workflow_dispatch:
 
@@ -45,6 +46,20 @@ jobs:
                       assert str(path) not in seen
                       seen.add(str(path))
                   bundle.extractall(root)
+          update = json.loads(pathlib.Path("update.json").read_text())
+          archive = pathlib.Path(update["file"])
+          assert archive.name == str(archive) and archive.name.startswith("site-update-")
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == update["sha256"]
+          expected = set(update["add"] + update["replace"])
+          with zipfile.ZipFile(archive) as bundle:
+              assert set(bundle.namelist()) == expected
+              assert len(bundle.namelist()) == len(expected)
+              for info in bundle.infolist():
+                  path = pathlib.PurePosixPath(info.filename)
+                  assert not path.is_absolute() and ".." not in path.parts
+                  assert not any(part.startswith("._") for part in path.parts)
+                  assert (str(path) in seen) == (str(path) in update["replace"])
+              bundle.extractall(root)
           manifest = json.loads((root / "release.json").read_text())
           for item in manifest["files"]:
               file = root / item["path"]
@@ -58,3 +73,4 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+

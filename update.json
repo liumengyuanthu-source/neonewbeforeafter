@@ -1,0 +1,19 @@
+{
+  "file": "site-update-20261118-v2.zip",
+  "sha256": "b8cf45f5a782cbc96354359316b192fe6bf3693ce475e26c6a34a3b4888fc520",
+  "replace": [
+    "index.html",
+    "README.md",
+    "release.json"
+  ],
+  "add": [
+    "release-solution-guide-20261118-v2/index.html",
+    "release-solution-guide-20261118-v2/guide.css",
+    "release-solution-guide-20261118-v2/app.js",
+    "release-solution-guide-20261118-v2/catalog.js",
+    "release-solution-guide-20261118-v2/before-map.js",
+    "release-solution-guide-20261118-v2/translations.js",
+    "release-solution-guide-20261118-v2/summaries.js",
+    "release-solution-guide-20261118-v2/change-highlights.js"
+  ]
+}
